@@ -1,0 +1,4 @@
+* text=auto eol=lf
+# bat keeps CRLF byte-for-byte (also inside GitHub ZIP downloads)
+*.bat -text
+*.png binary

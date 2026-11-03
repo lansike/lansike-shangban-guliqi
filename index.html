@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>上班鼓励器</title>
+<link id="favicon" rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%23D9B26A'/%3E%3Ccircle cx='32' cy='32' r='21' fill='none' stroke='%2313161B' stroke-width='3' opacity='.35'/%3E%3Ctext x='32' y='43' font-size='30' text-anchor='middle' font-family='Arial' font-weight='700' fill='%2313161B'%3E%C2%A5%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#13161B; --fg:#EFE9DC; --teal:#3FE0C5; --gold:#D9B26A;
+  --muted:rgba(239,233,220,.56); --faint:rgba(239,233,220,.32);
+  --line:rgba(239,233,220,.085); --card:rgba(255,255,255,.028); --card-hi:rgba(255,255,255,.05);
+  --grey:#6F747C;
+  --font:'Source Han Sans SC','Noto Sans CJK SC','思源黑体','Microsoft YaHei',sans-serif;
+  --num:'Bahnschrift','DIN Alternate','Source Han Sans SC','Noto Sans CJK SC','思源黑体','Microsoft YaHei',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--fg); font-family:var(--font);
+  -webkit-font-smoothing:antialiased; overflow-x:hidden; user-select:none;
+  background-image:
+    radial-gradient(1200px 600px at -10% -20%, rgba(63,224,197,.10), transparent 60%),
+    radial-gradient(900px 600px at 110% 120%, rgba(217,178,106,.09), transparent 60%);
+  background-attachment:fixed;
+}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+.app{max-width:1440px;margin:0 auto;min-height:100%;padding:10px 12px 12px;display:flex;flex-direction:column;gap:10px}
+/* top bar */
+.top{display:flex;align-items:center;gap:10px;height:36px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.06em;font-size:15px}
+.brand svg{width:24px;height:24px;flex:none}
+.top .sp{flex:1}
+.ibtn{height:30px;min-width:30px;padding:0 9px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  color:var(--muted);font-size:12.5px;border:1px solid var(--line);background:var(--card);transition:color .2s,border-color .2s,background .2s}
+.ibtn:hover{color:var(--fg);border-color:rgba(239,233,220,.2);background:var(--card-hi)}
+.ibtn svg{width:15px;height:15px}
+.ibtn.off{opacity:.55}
+.ibtn .lbl{white-space:nowrap}
+
+.main{display:flex;flex-direction:column;gap:10px;flex:1}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;position:relative}
+
+/* hero */
+.hero{padding:14px 16px 14px;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:-1px;border-radius:16px;pointer-events:none;
+  background:radial-gradient(500px 220px at 15% 0%, rgba(63,224,197,.08), transparent 70%)}
+.meta{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--muted);gap:8px}
+.badge{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid rgba(63,224,197,.35);color:var(--teal);display:none;white-space:nowrap}
+.badge.on{display:inline-block}
+.status{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin-top:8px}
+.status b{font-size:22px;letter-spacing:.06em;display:inline-flex;align-items:center;gap:9px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--teal);position:relative;top:-1px;box-shadow:0 0 0 0 rgba(63,224,197,.5);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(63,224,197,.55)}70%{box-shadow:0 0 0 9px rgba(63,224,197,0)}100%{box-shadow:0 0 0 0 rgba(63,224,197,0)}}
+.st-lunch .dot{background:var(--gold);animation:none}
+.st-idle .dot,.st-weekend .dot{background:var(--fg);opacity:.6;animation:none}
+.st-over .dot{background:var(--grey);animation:none}
+.status span{font-size:13px;color:var(--muted)}
+.status span em{font-style:normal;color:var(--fg)}
+
+.label{margin-top:12px;font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.amount{position:relative;display:flex;align-items:baseline;line-height:1;margin-top:4px;white-space:nowrap;
+  filter:drop-shadow(0 6px 26px rgba(217,178,106,.22));transition:filter .6s}
+.amount .yen{font-size:.46em;margin-right:.08em;color:var(--gold);font-weight:600;transform:translateY(-.08em)}
+.amount .digits{display:inline-flex;align-items:baseline}
+.amount i{font-style:normal;display:inline-block;width:.6em;text-align:center}
+.amount i.dot2{width:.3em}
+.amount .int i,.amount .dot2{background:linear-gradient(180deg,#F6E3B4 0%,#D9B26A 55%,#B98F48 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.amount .dec i{color:var(--gold);opacity:.82}
+.amount .dec{font-size:.66em}
+.amount{font-size:54px;font-weight:700}
+.amount.grey{filter:none}
+.amount.grey .int i,.amount.grey .dot2{background:none;color:var(--grey)}
+.amount.grey .dec i,.amount.grey .yen{color:var(--grey);opacity:.8}
+.amount.frozen{opacity:.45}
+.speed{margin-top:8px;font-size:13px;color:var(--muted)}
+.speed b{color:var(--teal);font-weight:600}
+.speed .ot{color:var(--fg)}
+.speed .ot b{color:var(--gold)}
+
+.ticker{margin-top:10px;min-height:42px;padding:9px 12px;border-radius:11px;background:rgba(63,224,197,.06);border:1px solid rgba(63,224,197,.14);
+  font-size:13.5px;line-height:1.5;display:flex;gap:9px;align-items:flex-start}
+.ticker .tag{flex:none;font-size:11px;color:var(--bg);background:var(--teal);border-radius:6px;padding:1px 6px;margin-top:2px;font-weight:700}
+.ticker .txt b{color:var(--gold);font-weight:600}
+.ticker .txt em{font-style:normal;color:var(--teal)}
+
+.actions{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;height:40px;border-radius:11px;font-size:14px;font-weight:600;letter-spacing:.04em;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  transition:transform .12s,background .2s,border-color .2s,color .2s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn svg{width:16px;height:16px;flex:none}
+.btn.primary{background:var(--teal);color:#0E1A18;box-shadow:0 6px 22px -8px rgba(63,224,197,.7)}
+.btn.primary:hover{background:#5BEBD3}
+.btn.ghost{border:1px solid var(--line);background:var(--card-hi);color:var(--fg)}
+.btn.ghost:hover{border-color:rgba(239,233,220,.22)}
+.btn.ghost.on{border-color:rgba(217,178,106,.6);color:var(--gold);background:rgba(217,178,106,.08)}
+
+/* side */
+.side{display:flex;flex-direction:column;gap:10px}
+.prog{padding:12px 16px}
+.row{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--muted)}
+.row b{color:var(--fg);font-weight:600}
+.bar{margin-top:9px;height:8px;border-radius:99px;background:rgba(239,233,220,.07);overflow:hidden;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:99px;background:linear-gradient(90deg,#2BB9A2,var(--teal));
+  box-shadow:0 0 12px rgba(63,224,197,.6)}
+.bar i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);background-size:60px 100%;background-repeat:no-repeat;animation:shine 2.4s linear infinite}
+@keyframes shine{from{background-position:-60px 0}to{background-position:calc(100% + 60px) 0}}
+.stats{display:grid;grid-template-columns:1.25fr 1fr 1fr;padding:0}
+.stat{padding:11px 12px 12px 16px;border-left:1px solid var(--line);min-width:0}
+.stat:first-child{border-left:0}
+.stat .k{font-size:11.5px;color:var(--muted);white-space:nowrap}
+.stat .k small{font-size:10px;color:var(--faint);margin-left:3px}
+.stat .v{font-size:17px;font-weight:700;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .v.gold{color:var(--gold)}
+.extra{padding:11px 16px;display:flex;gap:12px;align-items:center;font-size:12.5px;color:var(--muted)}
+.extra .toi{flex:1;min-width:0}
+.extra .toi b{color:var(--gold);font-weight:600}
+.extra .toi .sess{display:block;font-size:11px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.extra .toi.on .sess{color:var(--teal)}
+.cdcard{display:none;flex:1;flex-direction:column;justify-content:center;padding:22px 26px;min-height:150px}
+.cdcard .k{font-size:15px;color:var(--muted)}
+.cdcard .v{font-size:64px;font-weight:700;letter-spacing:.02em;margin-top:6px;color:var(--fg);line-height:1.05}
+.cdcard .v small{font-size:.38em;color:var(--muted);margin:0 .25em 0 .1em;font-weight:500}
+.cdcard .s{font-size:13px;color:var(--faint);margin-top:8px}
+@media (min-width:1600px) and (min-height:900px){.app{zoom:1.28}}
+.foot{font-size:10.5px;color:var(--faint);text-align:center;padding:2px 0 0}
+.hint{position:fixed;left:50%;bottom:8px;transform:translateX(-50%);font-size:11.5px;color:var(--bg);background:var(--gold);padding:4px 11px;border-radius:99px;z-index:40;opacity:0;pointer-events:none;transition:opacity .4s}
+.hint.on{opacity:.92}
+
+/* big layout */
+@media (min-width:880px) and (min-height:540px){
+  .app{padding:26px 44px 22px;gap:22px}
+  .top{height:44px}
+  .brand{font-size:18px}.brand svg{width:30px;height:30px}
+  .ibtn{height:36px;padding:0 13px;font-size:13.5px;border-radius:11px}
+  .main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,1fr);gap:22px;align-items:stretch}
+  .card{border-radius:22px}
+  .hero{padding:34px 40px 32px;display:flex;flex-direction:column}
+  .hero::before{border-radius:22px}
+  .meta{font-size:15px}
+  .status{margin-top:18px}.status b{font-size:34px}.status span{font-size:16px}
+  .dot{width:12px;height:12px}
+  .label{margin-top:auto;padding-top:24px;font-size:16px}
+  .ticker{margin-top:auto!important}
+  .cdcard{display:flex!important}
+  .amount{font-size:clamp(84px,8.4vw,150px);margin-top:10px}
+  .speed{font-size:16px;margin-top:14px}
+  .ticker{font-size:17px;margin-top:22px;padding:15px 18px;border-radius:14px;min-height:60px}
+  .ticker .tag{font-size:13px;padding:2px 8px;margin-top:3px}
+  .actions{margin-top:22px;gap:12px}
+  .btn{height:52px;font-size:16px;border-radius:14px}
+  .side{gap:22px}
+  .prog{padding:24px 26px}
+  .row{font-size:15px}.bar{height:12px;margin-top:14px}
+  .stats{grid-template-columns:1fr 1fr;grid-template-rows:auto auto}
+  .stat{padding:20px 26px}
+  .stat:first-child{grid-column:1 / 3;border-bottom:1px solid var(--line)}
+  .stat:nth-child(2){border-left:0}
+  .stat .k{font-size:14px}.stat .v{font-size:26px;margin-top:8px}
+  .stat:first-child .v{font-size:36px}
+  .extra{padding:20px 26px;font-size:15px;align-items:center}
+  .extra .toi .sess{font-size:13px;margin-top:5px}
+  .foot{font-size:12px}
+}
+
+/* coins */
+#coins{position:fixed;inset:0;pointer-events:none;z-index:30;overflow:hidden}
+.coin{position:absolute;left:0;top:0;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;
+  background:radial-gradient(circle at 34% 30%,#FFF1C9 0 12%,#E9C77E 30%,#C99A4A 70%,#9C7433 100%);
+  box-shadow:inset 0 0 0 2px rgba(255,236,190,.55),inset 0 -3px 0 rgba(0,0,0,.2),0 0 0 2px rgba(19,22,27,.85),0 6px 16px rgba(0,0,0,.45);
+  color:#6E4F1E;font:700 15px/28px Arial,sans-serif;text-align:center;will-change:transform,opacity}
+.plus{position:absolute;left:0;top:0;color:var(--teal);font:700 18px var(--num);will-change:transform,opacity;text-shadow:0 0 12px rgba(63,224,197,.6)}
+@media (min-width:880px){.ms{font-size:34px}}
+@media (min-width:880px){.coin{width:40px;height:40px;margin:-20px 0 0 -20px;font-size:21px;line-height:40px}.plus{font-size:26px}}
+
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:60}
+
+/* pep toast */
+.pep{position:fixed;left:50%;bottom:22px;width:min(560px,calc(100% - 24px));transform:translate(-50%,30px) scale(.94);opacity:0;pointer-events:none;
+  z-index:50;background:#1C2128;border:1px solid rgba(63,224,197,.35);border-radius:16px;padding:16px 18px 16px 52px;
+  box-shadow:0 24px 60px -18px rgba(0,0,0,.7),0 0 0 6px rgba(63,224,197,.05);transition:transform .45s cubic-bezier(.2,1.4,.4,1),opacity .25s}
+.pep.on{opacity:1;transform:translate(-50%,0) scale(1);pointer-events:auto}
+.pep::before{content:"“";position:absolute;left:14px;top:2px;font:700 54px/1 Georgia,serif;color:var(--teal)}
+.pep .q{font-size:15px;line-height:1.65}
+.pep .by{margin-top:6px;font-size:11.5px;color:var(--faint)}
+@media (min-width:880px){.pep{bottom:44px;padding:24px 28px 22px 72px;border-radius:20px}.pep::before{font-size:80px;left:20px}.pep .q{font-size:21px}.pep .by{font-size:13px}}
+
+/* milestone toast */
+.ms{position:fixed;left:50%;top:22%;white-space:nowrap;transform:translate(-50%,0);z-index:55;pointer-events:none;font-weight:800;font-size:22px;color:var(--gold);
+  letter-spacing:.08em;text-shadow:0 0 24px rgba(217,178,106,.6);opacity:0}
+
+/* countdown + offwork */
+.cd{position:fixed;inset:0;z-index:58;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .35s;
+  background:radial-gradient(circle at 50% 50%,rgba(19,22,27,.55),rgba(19,22,27,.9))}
+.cd.on{opacity:1}
+.cd .t{font-size:clamp(14px,2.2vmin,26px);color:var(--muted);letter-spacing:.3em}
+.cd .n{font:800 clamp(150px,48vmin,520px)/1 var(--num);font-variant-numeric:tabular-nums;color:var(--fg);text-shadow:0 0 60px rgba(63,224,197,.55)}
+.cd .n.hot{color:var(--gold);text-shadow:0 0 70px rgba(217,178,106,.7)}
+.ow{position:fixed;inset:0;z-index:59;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .5s;background:radial-gradient(circle at 50% 45%,rgba(19,22,27,.86),rgba(19,22,27,.97))}
+.ow.on{opacity:1;pointer-events:auto;cursor:pointer}
+.ow .big{font:900 clamp(96px,30vmin,380px)/1 var(--font);letter-spacing:.04em;
+  background:linear-gradient(180deg,#FFF3D1,#D9B26A 60%,#B0843D);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 10px 50px rgba(217,178,106,.45))}
+.ow .sub{margin-top:2vmin;font-size:clamp(14px,2.6vmin,30px);color:var(--teal);letter-spacing:.12em;text-align:center;padding:0 16px}
+.ow .tip{position:absolute;bottom:4vmin;font-size:12px;color:var(--faint)}
+
+/* settings drawer */
+.mask{position:fixed;inset:0;background:rgba(8,10,13,.6);backdrop-filter:blur(3px);z-index:70;opacity:0;pointer-events:none;transition:opacity .25s}
+.mask.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(400px,100%);background:#171A20;border-left:1px solid var(--line);z-index:71;transform:translateX(102%);
+  transition:transform .35s cubic-bezier(.2,.9,.2,1);display:flex;flex-direction:column;user-select:text}
+.drawer.on{transform:none}
+.drawer h3{font-size:16px;padding:16px 18px 6px;display:flex;justify-content:space-between;align-items:center}
+.drawer .body{padding:6px 18px 18px;overflow:auto;flex:1}
+.fg{margin-top:12px}
+.fg label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.fg .pair{display:flex;gap:8px;align-items:center}
+.fg .pair span{color:var(--faint);font-size:12px}
+.drawer input{width:100%;height:38px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--fg);padding:0 11px;font:15px var(--num);font-variant-numeric:tabular-nums;color-scheme:dark}
+.drawer input:focus{border-color:rgba(63,224,197,.5);outline:none}
+.drawer .sec{margin-top:20px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;font-weight:700}
+.drawer .note{font-size:11.5px;color:var(--faint);margin-top:6px;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.chip{height:32px;padding:0 12px;border-radius:9px;border:1px solid var(--line);font-size:12.5px;color:var(--fg);background:rgba(255,255,255,.03)}
+.chip:hover{border-color:rgba(63,224,197,.45)}
+.chip.on{border-color:var(--teal);color:var(--teal)}
+.drawer .foot2{display:flex;gap:8px;padding:12px 18px 16px;border-top:1px solid var(--line)}
+.err{color:var(--gold);font-size:12px;margin-top:8px;min-height:16px}
+
+/* demo bar */
+.demobar{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:45;display:none;gap:5px;align-items:center;padding:6px;border-radius:12px;background:rgba(23,26,32,.92);border:1px solid rgba(63,224,197,.28);backdrop-filter:blur(6px);font-size:12px;max-width:calc(100% - 16px);flex-wrap:wrap;justify-content:center}
+.demobar.on{display:flex}
+.demobar .chip{height:28px;padding:0 9px;font-size:12px}
+.demobar .t{color:var(--teal);padding:0 6px;font-weight:700}
+
+/* fake excel (boss key) */
+#excel{position:fixed;inset:0;z-index:100;background:#fff;color:#222;display:none;flex-direction:column;font-family:'Microsoft YaHei','DengXian','Segoe UI',Arial,sans-serif;font-size:12px;user-select:none}
+#excel.on{display:flex}
+.xl-title{height:32px;background:#107C41;color:#fff;display:flex;align-items:center;padding:0 0 0 10px;gap:10px;flex:none}
+.xl-title .lg{width:20px;height:20px}
+.xl-title .qa{display:flex;gap:12px;opacity:.9}
+.xl-title .nm{flex:1;text-align:center;font-size:12px;white-space:nowrap}
+.xl-title .qa span{white-space:nowrap}
+@media (max-width:760px){.xl-title .qa,.xl-title .search{display:none}.xl-title .win span{width:34px}}
+.xl-title .search{width:min(320px,30vw);height:22px;border-radius:4px;background:rgba(255,255,255,.18);font-size:11.5px;display:flex;align-items:center;padding-left:10px;color:rgba(255,255,255,.8)}
+.xl-title .win{display:flex}
+.xl-title .win span{width:44px;height:32px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.xl-tabs{height:30px;background:#107C41;color:#fff;display:flex;align-items:flex-end;padding-left:6px;gap:2px;flex:none;overflow:hidden}
+.xl-tabs span{padding:6px 12px;font-size:12.5px;white-space:nowrap}
+.xl-tabs span.on{background:#F3F3F3;color:#107C41;border-radius:4px 4px 0 0;font-weight:600}
+.xl-tabs span.file{background:#0B5E31}
+.xl-ribbon{height:88px;background:#F3F3F3;border-bottom:1px solid #D4D4D4;display:flex;align-items:stretch;padding:6px 4px 0;flex:none;overflow:hidden}
+.xl-grp{display:flex;flex-direction:column;padding:0 10px;border-right:1px solid #DADADA;flex:none}
+.xl-grp .tools{flex:1;display:flex;gap:6px;align-items:flex-start}
+.xl-grp .gn{font-size:11px;color:#666;text-align:center;padding:3px 0 4px}
+.xl-big{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px;width:48px}
+.xl-big i{width:30px;height:30px;border-radius:4px;display:block}
+.xl-sm{display:grid;grid-template-columns:repeat(4,auto);gap:4px 6px;align-items:center;font-size:11.5px}
+.xl-sm b{display:inline-flex;width:22px;height:22px;align-items:center;justify-content:center;border-radius:3px;font-weight:700}
+.xl-sm .sel{height:22px;border:1px solid #C8C8C8;background:#fff;padding:0 6px;display:inline-flex;align-items:center;font-size:11.5px;grid-column:span 2;min-width:80px}
+.xl-fbar{height:28px;display:flex;align-items:center;border-bottom:1px solid #D4D4D4;background:#fff;flex:none}
+.xl-fbar .nb{width:90px;height:100%;border-right:1px solid #D4D4D4;display:flex;align-items:center;padding-left:8px}
+.xl-fbar .fx{width:70px;text-align:center;color:#777;border-right:1px solid #D4D4D4;height:100%;display:flex;align-items:center;justify-content:center;font-style:italic;font-family:'Times New Roman',serif;font-size:14px}
+.xl-fbar .fv{padding-left:10px;font-family:Consolas,'Courier New',monospace}
+.xl-grid{flex:1;overflow:hidden;position:relative;background:#fff}
+.xl-grid table{border-collapse:collapse;table-layout:fixed}
+.xl-grid td,.xl-grid th{border-right:1px solid #E1E1E1;border-bottom:1px solid #E1E1E1;height:21px;padding:0 5px;white-space:nowrap;overflow:hidden;font-weight:400;font-size:12px}
+.xl-grid th{background:#F3F3F3;color:#444;text-align:center;border-color:#D4D4D4;font-size:11.5px}
+.xl-grid th.rh{width:40px}
+.xl-grid th.hl{background:#D3F0E0;color:#107C41;border-bottom:2px solid #107C41}
+.xl-grid th.rh.hl{border-bottom-width:1px;border-right:2px solid #107C41}
+.xl-grid td.n{text-align:right}
+.xl-grid td.h{background:#107C41;color:#fff;font-weight:600;text-align:center}
+.xl-grid td.t{font-weight:700;font-size:14px;color:#0E4F2A}
+.xl-grid td.ov{overflow:visible}
+.xl-grid td.sum{font-weight:700;border-top:2px solid #333;background:#F2F8F4}
+.xl-grid td.alt{background:#F7FBF8}
+.xl-grid td.neg{color:#C00000}
+.xl-grid td.cur{outline:2px solid #107C41;outline-offset:-2px}
+.xl-sheets{height:28px;background:#F3F3F3;border-top:1px solid #D4D4D4;display:flex;align-items:stretch;flex:none;font-size:12px}
+.xl-sheets span{padding:0 16px;display:flex;align-items:center;color:#444}
+.xl-sheets span.on{background:#fff;color:#107C41;font-weight:700;border-bottom:3px solid #107C41}
+.xl-status{height:24px;background:#F3F3F3;border-top:1px solid #E1E1E1;display:flex;align-items:center;padding:0 12px;gap:20px;color:#444;font-size:11.5px;flex:none;white-space:nowrap;overflow:hidden}
+.xl-status .r{margin-left:auto;display:flex;gap:18px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="9" fill="#1E242C" stroke="rgba(239,233,220,.12)"/><circle cx="16" cy="16" r="8.5" fill="#D9B26A"/><path d="M12.4 11.8l3.6 4.4 3.6-4.4M16 16.2v5.4M13 17.4h6M13 19.8h6" stroke="#13161B" stroke-width="1.7" fill="none" stroke-linecap="round"/><circle cx="25" cy="7" r="2.4" fill="#3FE0C5"/></svg>
+      <span>上班鼓励器</span>
+    </div>
+    <div class="sp"></div>
+    <button class="ibtn" id="btnSound" title="音效开关 (M)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="w1" d="M15.5 8.5a5 5 0 0 1 0 7"/><path class="w2" d="M18.5 5.5a9 9 0 0 1 0 13"/><path class="x" d="M16 9l6 6M22 9l-6 6" style="display:none"/></svg></button>
+    <button class="ibtn" id="btnBoss" title="老板键 (Esc / B)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11M15 9v11M3 14.5h18"/></svg><span class="lbl">老板键</span></button>
+    <button class="ibtn" id="btnSet" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="lbl">设置</span></button>
+  </header>
+
+  <main class="main">
+    <section class="card hero" id="hero">
+      <div class="meta"><span class="num" id="clock">----</span><span class="badge num" id="demoBadge">录屏模式</span></div>
+      <div class="status st-work" id="status"><b><i class="dot"></i><span id="stText" style="font-size:inherit;color:inherit">上班中</span></b><span id="stSub"></span></div>
+      <div class="label" id="amountLabel">今日已赚</div>
+      <div class="amount num" id="amount"><span class="yen">¥</span><span class="digits"><span class="int" id="aInt"></span><i class="dot2">.</i><span class="dec" id="aDec"></span></span></div>
+      <div class="speed" id="speed">当前赚钱速度 <b class="num">¥0.0000</b> / 秒</div>
+      <div class="ticker" id="ticker"><span class="tag">换算</span><span class="txt" id="tickTxt"></span></div>
+      <div class="actions">
+        <button class="btn primary" id="btnPep" title="打气 (J)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>打气</button>
+        <button class="btn ghost" id="btnToilet" title="带薪如厕 (T)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a7 7 0 0 1-7 7 7 7 0 0 1-7-7zM7 3h4v8H7zM10 18l-1 3h6l-1-3"/></svg><span id="toiLbl">带薪如厕</span></button>
+        <button class="btn ghost" id="btnTimer" title="关闭/打开计时器"><span id="timerLbl">关闭计时器</span></button>
+      </div>
+    </section>
+
+    <section class="side">
+      <div class="card prog">
+        <div class="row"><span>今日工作进度 <b class="num" id="pPct">0.0%</b></span><span class="num" id="pHrs">已工作 0.00 / 8.00 小时</span></div>
+        <div class="bar"><i id="pBar"></i></div>
+      </div>
+      <div class="card cdcard"><div class="k" id="cdK">距离下班</div><div class="v num" id="cdV">--</div><div class="s" id="cdS"></div></div>
+      <div class="card stats">
+        <div class="stat"><div class="k">本月累计<small>估算</small></div><div class="v gold num" id="sMonth">¥0.00</div></div>
+        <div class="stat"><div class="k">时薪</div><div class="v num" id="sHour">¥0.00</div></div>
+        <div class="stat"><div class="k">今日满勤可赚</div><div class="v num" id="sDay">¥0.00</div></div>
+      </div>
+      <div class="card extra">
+        <div class="toi" id="toiBox">带薪如厕已赚 <b class="num" id="toiAmt">¥0.0000</b><span class="sess" id="toiSess">点「带薪如厕」开始计，老板买单</span></div>
+      </div>
+      <p class="foot">本月累计按本月已过工作日（周一至周五）估算 · 数据只存在本机浏览器</p>
+    </section>
+  </main>
+</div>
+
+<div id="coins"></div>
+<canvas id="fx"></canvas>
+<div class="hint" id="hint">点一下页面，开启叮当声</div>
+<div class="pep" id="pep"><div class="q" id="pepQ"></div><div class="by" id="pepBy">—— 上班鼓励器 · 第 1 句</div></div>
+<div class="ms" id="ms"></div>
+<div class="cd" id="cd"><div class="t">距 离 下 班</div><div class="n" id="cdN">10</div></div>
+<div class="ow" id="ow"><div class="big">下班！</div><div class="sub" id="owSub">今天辛苦了，剩下的时间都归你自己</div><div class="tip">点任意处关闭</div></div>
+
+<div class="demobar" id="demobar">
+  <span class="t">录屏模式</span>
+  <button class="chip" data-speed="1">×1</button><button class="chip" data-speed="60">×60</button><button class="chip" data-speed="600">×600</button>
+  <button class="chip" data-jump="offwork">下班前15秒</button><button class="chip" data-jump="100">快满¥100</button><button class="chip" data-jump="overtime">加班</button>
+  <button class="chip" data-jump="exit">退出</button>
+</div>
+
+<div class="mask" id="mask"></div>
+<aside class="drawer" id="drawer" aria-label="设置">
+  <h3>设置 <button class="ibtn" id="btnClose">关闭</button></h3>
+  <div class="body">
+    <div class="fg"><label>月薪（元）</label><input id="fSalary" type="number" min="1" step="100"></div>
+    <div class="fg"><label>每月工作日（天）</label><input id="fDays" type="number" min="1" max="31" step="1"></div>
+    <div class="fg"><label>上班 / 下班</label><div class="pair"><input id="fStart" type="time"><span>至</span><input id="fEnd" type="time"></div></div>
+    <div class="fg"><label>午休（不计薪）</label><div class="pair"><input id="fLs" type="time"><span>至</span><input id="fLe" type="time"></div></div>
+    <div class="err" id="fErr"></div>
+    <div class="note">只保存在这台电脑的浏览器里（localStorage），不联网、不上传。</div>
+    <div class="sec">录屏模式</div>
+    <div class="note">快进时间方便录屏，不会写入真实累计。也可以在网址后加 #demo=offwork、#demo=100、#speed=60 直接进入。</div>
+    <div class="chips">
+      <button class="chip" data-speed="1">×1</button><button class="chip" data-speed="60">×60</button><button class="chip" data-speed="600">×600</button>
+      <button class="chip" data-jump="offwork">下班前15秒</button><button class="chip" data-jump="100">快满¥100</button>
+      <button class="chip" data-jump="overtime">加班中</button><button class="chip" data-jump="lunch">午休中</button><button class="chip" data-jump="exit">回到现实</button>
+    </div>
+    <div class="sec">带薪如厕</div>
+    <div class="chips"><button class="chip" id="btnToiReset">清零带薪如厕累计</button></div>
+  </div>
+  <div class="foot2"><button class="btn ghost" id="btnReset">恢复默认</button><button class="btn primary" id="btnSave">保存</button></div>
+</aside>
+
+<div id="excel" aria-hidden="true">
+  <div class="xl-title">
+    <svg class="lg" viewBox="0 0 24 24"><rect x="7" y="3" width="15" height="18" rx="2" fill="#fff" opacity=".9"/><path d="M14 7h6M14 11h6M14 15h6" stroke="#107C41" stroke-width="1.6"/><rect x="2" y="6" width="11" height="12" rx="1.5" fill="#0B5E31"/><path d="M5 9l5 6M10 9l-5 6" stroke="#fff" stroke-width="1.8"/></svg>
+    <div class="qa"><span>自动保存 ● 关</span><span>保存</span><span>撤销</span><span>恢复</span></div>
+    <div class="nm">工作簿1 - Excel</div>
+    <div class="search">搜索</div>
+    <div class="win"><span>—</span><span>☐</span><span>✕</span></div>
+  </div>
+  <div class="xl-tabs"><span class="file">文件</span><span class="on">开始</span><span>插入</span><span>页面布局</span><span>公式</span><span>数据</span><span>审阅</span><span>视图</span><span>帮助</span></div>
+  <div class="xl-ribbon">
+    <div class="xl-grp"><div class="tools"><div class="xl-big"><i style="background:linear-gradient(#E8E8E8,#CFCFCF);border:1px solid #BBB"></i>粘贴</div><div class="xl-sm" style="grid-template-columns:auto"><span>剪切</span><span>复制</span><span>格式刷</span></div></div><div class="gn">剪贴板</div></div>
+    <div class="xl-grp"><div class="tools"><div class="xl-sm"><span class="sel">等线</span><span class="sel" style="min-width:40px">11</span><b>B</b><b style="font-style:italic">I</b><b style="text-decoration:underline">U</b><b>A</b></div></div><div class="gn">字体</div></div>
+    <div class="xl-grp"><div class="tools"><div class="xl-sm"><b>≡</b><b>≣</b><b>☰</b><span>自动换行</span><b>⇤</b><b>⇥</b><span style="grid-column:span 2">合并后居中</span></div></div><div class="gn">对齐方式</div></div>
+    <div class="xl-grp"><div class="tools"><div class="xl-sm"><span class="sel">常规</span><b>%</b><b>,</b><b>.0</b><b>.00</b></div></div><div class="gn">数字</div></div>
+    <div class="xl-grp"><div class="tools"><div class="xl-big"><i style="background:linear-gradient(90deg,#63BE7B 0 33%,#FFEB84 33% 66%,#E15241 66%)"></i>条件格式</div><div class="xl-big"><i style="background:repeating-linear-gradient(#107C41 0 6px,#C6E7D3 6px 12px)"></i>套用表格</div><div class="xl-big"><i style="background:#E2EFDA;border:1px solid #A9D08E"></i>单元格样式</div></div><div class="gn">样式</div></div>
+    <div class="xl-grp"><div class="tools"><div class="xl-big"><i style="background:#fff;border:1px solid #BBB;box-shadow:inset 0 -8px 0 #DDEBF7"></i>插入</div><div class="xl-big"><i style="background:#fff;border:1px solid #BBB"></i>删除</div></div><div class="gn">单元格</div></div>
+    <div class="xl-grp" style="border:0"><div class="tools"><div class="xl-sm" style="grid-template-columns:auto"><span>∑ 自动求和</span><span>填充</span><span>清除</span></div><div class="xl-big"><i style="background:#fff;border:1px solid #BBB"></i>排序和筛选</div></div><div class="gn">编辑</div></div>
+  </div>
+  <div class="xl-fbar"><div class="nb">G7</div><div class="fx">fx</div><div class="fv">=SUM(D7:F7)</div></div>
+  <div class="xl-grid" id="xlGrid"></div>
+  <div class="xl-sheets"><span>&lt; &gt;</span><span class="on">Q4预算</span><span>Sheet2</span><span>汇总</span><span>＋</span></div>
+  <div class="xl-status"><span>就绪</span><span>辅助功能: 一切就绪</span><div class="r"><span>平均值: 486,217</span><span>计数: 3</span><span>求和: 1,458,651</span><span>普通　页面布局</span><span>100%</span></div></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+/* ---------------- 数据 ---------------- */
+var DEFAULTS = {salary:8000, days:22, start:'09:00', end:'18:00', ls:'12:00', le:'13:00'};
+var LS_SET='sbg.settings', LS_TOI='sbg.toilet', LS_SOUND='sbg.sound';
+
+var ITEMS = [
+  {u:'杯', n:'奶茶（三分糖去冰加椰果）', p:16},
+  {u:'套', n:'煎饼果子（加两个蛋）', p:9},
+  {u:'个', n:'半杯美式咖啡', p:12},
+  {u:'颗', n:'老板保时捷上的螺丝', p:38},
+  {u:'只', n:'袜子（另一只明天再赚）', p:4.5},
+  {u:'片', n:'工位绿萝的叶子', p:0.8},
+  {u:'颗', n:'公司年会抽奖手机屏幕上的像素', p:0.0012},
+  {u:'个', n:'茶叶蛋（还在锅里冒热气那种）', p:2},
+  {u:'串', n:'便利店关东煮里的魔芋丝', p:3.5},
+  {u:'条', n:'老板办公室真皮椅的扶手', p:680},
+  {u:'个', n:'去三亚机票上的「亚」字', p:430},
+  {u:'次', n:'15 分钟的共享单车', p:1.5},
+  {u:'包', n:'纸巾（带薪如厕必备）', p:1},
+  {u:'顿', n:'猫主子的罐头', p:8},
+  {u:'截', n:'老板雪茄的烟灰', p:5},
+  {u:'次', n:'外卖配送费（不含饭）', p:5},
+  {u:'次', n:'理发中「洗头」那一步', p:20},
+  {u:'个', n:'出租屋一平米房租的一个角', p:18},
+  {u:'页', n:'甲方第 37 版 PPT', p:50},
+  {u:'颗', n:'进口车厘子', p:3},
+  {u:'个', n:'没有肉的肉夹馍', p:4},
+  {u:'天', n:'健身卡的折旧（反正也不去）', p:6},
+  {u:'口', n:'公司楼下火锅店的锅底', p:1.2},
+  {u:'根', n:'能撑到下班的数据线', p:15},
+  {u:'平方厘米', n:'市中心的学区房', p:9.8},
+  {u:'粒', n:'老板游艇甲板上的沙子', p:0.3}
+];
+
+var PEPS = [
+  '你不是在摸鱼，你是在给公司的 Wi-Fi 做压力测试。',
+  '再坚持一下，工位椅已经记住你的形状了，你一走它会难过的。',
+  '今天的你比昨天多掌握了一个快捷键：Alt+Tab。',
+  '别灰心，老板保时捷上至少有一颗螺丝，是你用今天上午拧上去的。',
+  '你开会时那一声「嗯」，按秒计价，值三毛钱，掷地有声。',
+  '你回复的「收到」，是全公司最像收到的收到。',
+  '你写的周报，连你自己读完都差点信了。',
+  '冷静。现在辞职的话，明天就得自己花钱找地方吹空调了。',
+  '想想看：你在厕所的每一秒，都有人在替你付钱。',
+  '你的电脑风扇转得那么响，看起来就很努力，这就够了。',
+  '你不是拖延，你是在等需求自己消失——而且它真的有三成概率会消失。',
+  '你今天打开 Excel 的次数，已经够它把你写进族谱了。',
+  '好消息：今天已经过去一大半了。坏消息：明天还有一整天。',
+  '你在会上一言不发的样子，像极了一个深思熟虑的人。',
+  '你键盘上的 Ctrl、C、V 磨得最亮，那不是磨损，是勋章。',
+  '保持微笑，你的脸也是按秒计薪的。',
+  '你不是在发呆，是大脑在后台做碎片整理，请勿强制关机。',
+  '再撑一会儿，楼下煎饼摊阿姨已经开始给你热锅了。',
+  '今天你一次都没手滑点到「回复全部」，已经超越了全公司 60% 的人。',
+  '公司离不开你。至少门禁系统里的你，每天都准时到岗。',
+  '老板买不起你的一辈子，所以只能按月分期付款。',
+  '别焦虑，你的 KPI 自己也不知道是怎么被定出来的。',
+  '坐直，你的腰椎今天也在带薪上班。',
+  '你看起来在想方案，其实在想晚饭。一心二用，高级人才。',
+  '今日成就：打印机终于认出你了，一次就出纸。',
+  '工资条很薄，但你的心理承受能力很厚，扯平了。',
+  '你把「马上改」说出了「这辈子改」的从容，这就是职场松弛感。',
+  '你喝的不是咖啡，是公司按秒报销的续命水。',
+  '别人在内卷，你在内耗，殊途同归，都很累，抱抱。',
+  '今天的工作虽然没做完，但今天的工资一分没少赚。',
+  '你泡的那杯枸杞，已经比你的项目更早进入了成熟期。',
+  '电梯里遇到老板不用慌，他也在想怎么早点下班。',
+  '恭喜你，又一次把「在吗」理解成了「我要加需求」，判断完全正确。',
+  '你离财务自由只差一件事：一位素未谋面、但很有钱的远房亲戚。',
+  '今天你修好的 bug 里，有三个是你上周亲手种下的。自产自销，绿色环保。',
+  '你在工位上看起来一动不动，但你的头发正在为公司全力以赴。',
+  '你的待办清单很长，但你的午休也很长，人生需要平衡。',
+  '你开了 47 个浏览器标签页，每一个都是「待会儿再看」的承诺。'
+];
+
+/* ---------------- 工具 ---------------- */
+function $(id){return document.getElementById(id)}
+function pad(n){return (n<10?'0':'')+n}
+function hm(s){var a=String(s).split(':');return (+a[0])*3600+(+a[1]||0)*60}
+function clamp(x,a,b){return x<a?a:x>b?b:x}
+function sod(d){return d.getHours()*3600+d.getMinutes()*60+d.getSeconds()+d.getMilliseconds()/1000}
+function isWorkday(d){var w=d.getDay();return w>=1&&w<=5}
+function dayKey(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+var WEEK=['周日','周一','周二','周三','周四','周五','周六'];
+function fmtDur(sec,withSec){
+  sec=Math.max(0,Math.floor(sec));var h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
+  if(withSec===false){return h>0?(h+' 小时 '+m+' 分'):(m+' 分')}
+  if(h>0)return h+'小时'+pad(m)+'分'+pad(s)+'秒';
+  if(m>0)return m+'分'+pad(s)+'秒';
+  return s+'秒';
+}
+function money(x,d){return '¥'+Number(x).toLocaleString('zh-CN',{minimumFractionDigits:d,maximumFractionDigits:d})}
+function lsGet(k,def){try{var v=localStorage.getItem(k);return v==null?def:JSON.parse(v)}catch(e){return def}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+/* ---------------- 计薪模型（纯函数，可测试） ---------------- */
+function model(S){
+  var start=hm(S.start), end=hm(S.end), ls=hm(S.ls), le=hm(S.le);
+  var lunch = (le>ls) ? Math.max(0, Math.min(le,end)-Math.max(ls,start)) : 0;
+  if(lunch>0){ ls=Math.max(ls,start); le=Math.min(le,end); }
+  var workSec = Math.max(1, end-start-lunch);
+  var daily = S.salary / S.days;
+  var perSec = daily / workSec;
+  return {start:start,end:end,ls:ls,le:le,lunch:lunch,workSec:workSec,daily:daily,perSec:perSec,hourly:perSec*3600,salary:S.salary,days:S.days};
+}
+function workedAt(M,t){ // t: 当日秒数
+  var x=clamp(t,M.start,M.end), w=x-M.start;
+  if(M.lunch>0) w -= Math.max(0, Math.min(M.le,x)-M.ls);
+  return Math.max(0,w);
+}
+function timeForWorked(M,w){ // 反推：工作满 w 秒是几点
+  w=clamp(w,0,M.workSec);
+  if(M.lunch>0 && M.start+w>M.ls) return M.start+w+M.lunch;
+  return M.start+w;
+}
+function weekdaysBefore(d){ // 本月 1 号到昨天的周一至周五天数
+  var n=0;for(var i=1;i<d.getDate();i++){var w=new Date(d.getFullYear(),d.getMonth(),i).getDay();if(w>=1&&w<=5)n++}return n;
+}
+function stateAt(M,d){
+  var t=sod(d), wd=isWorkday(d), r={t:t,workday:wd};
+  if(!wd){r.kind='weekend'}
+  else if(t<M.start){r.kind='before'}
+  else if(M.lunch>0 && t>=M.ls && t<M.le){r.kind='lunch'}
+  else if(t<M.end){r.kind='work'}
+  else {r.kind='over'}
+  r.worked = wd ? workedAt(M,t) : 0;
+  r.earned = r.worked*M.perSec;
+  r.rate = r.kind==='work' ? M.perSec : 0;
+  r.toEnd = M.end-t;
+  r.overtime = (wd && t>M.end) ? (t-M.end)*M.perSec : 0;
+  r.progress = r.worked/M.workSec;
+  r.month = Math.min(weekdaysBefore(d), M.days)*M.daily + r.earned;
+  return r;
+}
+
+/* ---------------- 设置 ---------------- */
+var S = Object.assign({}, DEFAULTS, lsGet(LS_SET,{}));
+function validate(s){
+  if(!(s.salary>0)) return '月薪要大于 0（虽然很想写负数）';
+  if(!(s.days>=1&&s.days<=31)) return '每月工作日要在 1 到 31 天之间';
+  if(!(hm(s.end)>hm(s.start))) return '下班时间要晚于上班时间（暂不支持跨夜班）';
+  return '';
+}
+if(validate(S)) S=Object.assign({},DEFAULTS);
+var M = model(S);
+
+/* ---------------- 时钟（真实 / 录屏） ---------------- */
+var clock={demo:false,speed:1,bv:0,br:0};
+function nowMs(){ return clock.demo ? clock.bv+(performance.now()-clock.br)*clock.speed : Date.now(); }
+function setVirtual(ms){ clock.bv=ms; clock.br=performance.now(); }
+function enterDemo(){ if(!clock.demo){ setVirtual(Date.now()); clock.demo=true; demoToilet=0; } }
+function setSpeed(x){ enterDemo(); var n=nowMs(); clock.speed=x; setVirtual(n); resyncFx(); }
+function demoDay(){ // 录屏用：今天若是周末就借用最近的周五
+  var d=new Date(nowMs()); d.setHours(0,0,0,0);
+  while(!isWorkday(d)) d.setDate(d.getDate()-1);
+  return d.getTime();
+}
+function jump(kind,before){
+  if(kind==='exit'){ clock.demo=false; clock.speed=1; resyncFx(); return; }
+  enterDemo();
+  var base=demoDay(), t;
+  if(kind==='offwork') t=M.end-(before>0?before:15);
+  else if(kind==='100'){ var target=Math.min(99.95, M.daily*0.98); t=timeForWorked(M,target/M.perSec); }
+  else if(kind==='overtime') t=M.end+47*60+12;
+  else if(kind==='lunch') t=(M.lunch>0?M.ls+20*60:M.start+3600);
+  else if(kind==='morning') t=M.start-5*60;
+  else t=sod(new Date(nowMs()));
+  setVirtual(base+t*1000);
+  celebrated=false; resyncFx();
+}
+
+/* ---------------- 音效（WebAudio 合成） ---------------- */
+var soundOn = lsGet(LS_SOUND,true), actx=null;
+function unlockAudio(){
+  try{
+    if(!actx){var C=window.AudioContext||window.webkitAudioContext;if(!C)return;actx=new C();}
+    if(actx.state==='suspended') actx.resume();
+  }catch(e){}
+  setTimeout(updateHint,50);
+}
+function canPlay(){return soundOn && !boss && actx && actx.state==='running'}
+function tone(f,t0,dur,type,g,f2){
+  var o=actx.createOscillator(),v=actx.createGain();o.type=type||'sine';
+  o.frequency.setValueAtTime(f,t0); if(f2) o.frequency.exponentialRampToValueAtTime(f2,t0+dur);
+  v.gain.setValueAtTime(0.0001,t0);v.gain.exponentialRampToValueAtTime(g,t0+0.008);v.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  o.connect(v);v.connect(actx.destination);o.start(t0);o.stop(t0+dur+0.02);
+}
+var lastDing=0;
+function ding(){ if(!canPlay())return; var t=actx.currentTime; if(t-lastDing<0.07)return; lastDing=t;
+  tone(1975.5,t,0.09,'triangle',0.16); tone(2637,t+0.075,0.55,'triangle',0.14); tone(5274,t+0.075,0.25,'sine',0.03); }
+function pop(big){ if(!canPlay())return; var t=actx.currentTime, len=big?0.6:0.35;
+  var b=actx.createBuffer(1,Math.floor(actx.sampleRate*len),actx.sampleRate),d=b.getChannelData(0);
+  for(var i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,big?3:4);
+  var s=actx.createBufferSource(),f=actx.createBiquadFilter(),g=actx.createGain();s.buffer=b;f.type='lowpass';f.frequency.value=big?1800:2600;
+  g.gain.value=big?0.35:0.22;s.connect(f);f.connect(g);g.connect(actx.destination);s.start(t);
+  tone(big?500:900,t,0.18,'sine',0.05,big?120:300);
+}
+function tick(hot){ if(!canPlay())return; var t=actx.currentTime; tone(hot?1320:880,t,0.12,'square',0.05); }
+function fanfare(){ if(!canPlay())return; var t=actx.currentTime,n=[523.25,659.25,783.99,1046.5,1318.5];
+  n.forEach(function(f,i){tone(f,t+i*0.11,0.5,'triangle',0.14)}); tone(1046.5,t+0.6,1.2,'triangle',0.12); tone(1568,t+0.6,1.2,'sine',0.05); }
+function updateHint(){ $('hint').classList.toggle('on', !!(soundOn && (!actx || actx.state!=='running'))); }
+function renderSoundBtn(){ var b=$('btnSound');b.classList.toggle('off',!soundOn);
+  b.querySelector('.w1').style.display=b.querySelector('.w2').style.display=soundOn?'':'none';b.querySelector('.x').style.display=soundOn?'none':''; updateHint(); }
+
+/* ---------------- 金额渲染（逐位等宽） ---------------- */
+var aInt=$('aInt'), aDec=$('aDec'), lastInt='', lastDec='';
+function setChars(el,str,prev){
+  if(el.children.length!==str.length){ el.innerHTML=''; for(var i=0;i<str.length;i++){var c=document.createElement('i');el.appendChild(c)} prev=''; }
+  for(var j=0;j<str.length;j++){ if(prev[j]!==str[j]) el.children[j].textContent=str[j]; }
+}
+function renderAmount(x){
+  var s=x.toFixed(4), p=s.split('.');
+  if(p[0]!==lastInt){ setChars(aInt,p[0],lastInt); lastInt=p[0]; }
+  if(p[1]!==lastDec){ setChars(aDec,p[1],lastDec); lastDec=p[1]; }
+}
+
+/* ---------------- 烟花（canvas） ---------------- */
+var cv=$('fx'), cx=cv.getContext('2d'), parts=[], rockets=[], fxOn=false, fxLast=0, dpr=1, showUntil=0;
+var PAL=['#D9B26A','#F3D79A','#3FE0C5','#8CF5E2','#EFE9DC','#FFB547','#9CC9FF'];
+function sizeFx(){ dpr=Math.min(2,window.devicePixelRatio||1); cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; }
+function burst(x,y,n,power,pal){
+  pal=pal||PAL; var c1=pal[Math.random()*pal.length|0], c2=pal[Math.random()*pal.length|0];
+  for(var i=0;i<n;i++){ var a=Math.random()*Math.PI*2, sp=(0.35+Math.random()*0.65)*power;
+    parts.push({x:x,y:y,px:x,py:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,decay:0.55+Math.random()*0.5,c:Math.random()<.7?c1:c2,w:1.2+Math.random()*1.6}); }
+  startFx();
+}
+function rocket(){ var w=innerWidth,h=innerHeight;
+  rockets.push({x:w*(0.12+Math.random()*0.76),y:h+10,vx:(Math.random()-.5)*60,vy:-(h*(0.9+Math.random()*0.45)),ty:h*(0.12+Math.random()*0.4)}); startFx(); }
+function startFx(){ if(!fxOn){fxOn=true;fxLast=performance.now();requestAnimationFrame(fxLoop)} }
+function resyncFx(){ lastFloor=null; }
+var nextRocket=0;
+function fxLoop(now){
+  var dt=Math.min(0.05,(now-fxLast)/1000); fxLast=now;
+  if(showUntil>now && now>nextRocket){ rocket(); if(Math.random()<.5)rocket(); nextRocket=now+260+Math.random()*260; }
+  cx.setTransform(dpr,0,0,dpr,0,0); cx.clearRect(0,0,innerWidth,innerHeight); cx.globalCompositeOperation='lighter'; cx.lineCap='round';
+  for(var i=rockets.length-1;i>=0;i--){ var r=rockets[i]; var px=r.x,py=r.y; r.vy+=520*dt; r.x+=r.vx*dt; r.y+=r.vy*dt;
+    cx.strokeStyle='rgba(243,215,154,.9)'; cx.lineWidth=2.2; cx.beginPath(); cx.moveTo(px,py+8); cx.lineTo(r.x,r.y); cx.stroke();
+    if(r.y<=r.ty||r.vy>=-40){ rockets.splice(i,1); burst(r.x,r.y,90+Math.random()*60,240+Math.random()*180); pop(true); } }
+  for(var j=parts.length-1;j>=0;j--){ var p=parts[j]; p.px=p.x;p.py=p.y; p.vx*=Math.pow(0.18,dt); p.vy=p.vy*Math.pow(0.18,dt)+140*dt;
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=p.decay*dt; if(p.life<=0){parts.splice(j,1);continue}
+    cx.globalAlpha=Math.min(1,p.life*1.4); cx.strokeStyle=p.c; cx.lineWidth=p.w; cx.beginPath(); cx.moveTo(p.px-(p.x-p.px)*2,p.py-(p.y-p.py)*2); cx.lineTo(p.x,p.y); cx.stroke(); }
+  cx.globalAlpha=1; cx.globalCompositeOperation='source-over';
+  if(parts.length||rockets.length||showUntil>now) requestAnimationFrame(fxLoop); else { fxOn=false; cx.clearRect(0,0,innerWidth,innerHeight); }
+}
+
+/* ---------------- 金币 ---------------- */
+var coinsEl=$('coins'), activeCoins=0;
+function dropCoin(delay){
+  if(activeCoins>40)return; var r=$('amount').getBoundingClientRect();
+  var x0=r.left+r.width*(0.2+Math.random()*0.75), y0=r.top+r.height*0.15, x1=x0+(Math.random()-.5)*Math.min(260,innerWidth*0.4), y1=innerHeight+50;
+  var c=document.createElement('div');c.className='coin';c.textContent='¥';coinsEl.appendChild(c);activeCoins++;
+  var dur=1300+Math.random()*700, spin=(Math.random()<.5?-1:1)*(360+Math.random()*540);
+  var a=c.animate([
+    {transform:'translate('+x0+'px,'+y0+'px) scale(.3) rotateY(0deg)',opacity:0},
+    {transform:'translate('+(x0+(x1-x0)*.1)+'px,'+(y0-70)+'px) scale(1.15) rotateY(180deg)',opacity:1,offset:.16},
+    {transform:'translate('+(x0+(x1-x0)*.25)+'px,'+(y0-86)+'px) scale(1) rotateY(270deg)',opacity:1,offset:.26,easing:'cubic-bezier(.5,0,.9,.6)'},
+    {transform:'translate('+x1+'px,'+y1+'px) scale(.9) rotate('+spin+'deg)',opacity:.9}
+  ],{duration:dur,delay:delay||0,fill:'both'});
+  a.onfinish=function(){c.remove();activeCoins--};
+  var p=document.createElement('div');p.className='plus';p.textContent='+1';coinsEl.appendChild(p);
+  var pa=p.animate([{transform:'translate('+(r.right-30)+'px,'+(r.top+10)+'px)',opacity:0},{transform:'translate('+(r.right-26)+'px,'+(r.top-14)+'px)',opacity:1,offset:.25},{transform:'translate('+(r.right-22)+'px,'+(r.top-46)+'px)',opacity:0}],{duration:1100,delay:delay||0,easing:'ease-out',fill:'both'});
+  pa.onfinish=function(){p.remove()};
+  setTimeout(ding,delay||0);
+}
+var MILESTONES=[10,50,100,200,500,1000,2000,5000,10000,20000,50000];
+function milestone(v){
+  var r=$('amount').getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2;
+  burst(x,y-10,70,260); setTimeout(function(){burst(x-r.width*.3,y-30,50,200)},160); setTimeout(function(){burst(x+r.width*.3,y-20,50,200)},300);
+  pop(false); setTimeout(function(){pop(false)},180);
+  var m=$('ms'); m.textContent='今日破 ¥'+v+' 了！'; m.style.left=(r.left+r.width/2)+'px'; m.style.top=Math.max(8,r.top-56)+'px'; m.animate([{opacity:0,transform:'translate(-50%,16px) scale(.8)'},{opacity:1,transform:'translate(-50%,0) scale(1.08)',offset:.2},{opacity:1,transform:'translate(-50%,-6px) scale(1)',offset:.75},{opacity:0,transform:'translate(-50%,-24px) scale(1)'}],{duration:2200,easing:'ease-out'});
+}
+
+/* ---------------- 换算轮播 ---------------- */
+var tickIdx=Math.floor(Math.random()*ITEMS.length), tickAt=0, tickTxt=$('tickTxt'), lastTick='';
+function fmtCount(n){ return n>=10000? (n/10000).toFixed(1)+' 万' : String(n); }
+function tickerText(st){
+  var it=ITEMS[tickIdx], e=st.earned, k=Math.floor(e/it.p+1e-9), rate=st.rate;
+  if(rate>0){
+    var left=(k+1)*it.p-e, sec=left/rate, ts=sec>=3600?fmtDur(sec,false):sec>=60?(Math.floor(sec/60)+' 分 '+Math.floor(sec%60)+' 秒'):(Math.floor(sec)+' 秒');
+    if(k<1) return '再过 <em class="num">'+ts+'</em>，就能买 1 '+it.u+'<b>'+it.n+'</b>';
+    if(sec<1) return '已赚够 <em class="num">'+fmtCount(k)+'</em> '+it.u+'<b>'+it.n+'</b>，下一'+it.u+'马上到账';
+    return '已赚够 <em class="num">'+fmtCount(k)+'</em> '+it.u+'<b>'+it.n+'</b>，再过 <em class="num">'+ts+'</em> 再来一'+it.u;
+  }
+  if(k<1) return st.kind==='weekend'?'今天不上班，<b>'+it.n+'</b>请自费':'现在没在计薪，<b>'+it.n+'</b>还得等等';
+  return '今天已赚够 <em class="num">'+fmtCount(k)+'</em> '+it.u+'<b>'+it.n+'</b>'+(st.kind==='over'?'（加班这段不算）':'');
+}
+
+/* ---------------- 带薪如厕 ---------------- */
+var toiTotal=+lsGet(LS_TOI,0)||0, demoToilet=0, toiOn=false, toiSess=0, toiSessSec=0, toiSaveAt=0;
+function toggleToilet(){ toiOn=!toiOn; toiSess=0; toiSessSec=0; $('btnToilet').classList.toggle('on',toiOn); $('toiLbl').textContent=toiOn?'蹲坑计薪中…':'带薪如厕'; $('toiBox').classList.toggle('on',toiOn); }
+
+/* ---------------- 老板键 ---------------- */
+var boss=false, normalTitle=document.title, normalIcon=$('favicon').href;
+var XL_ICON="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='7' y='3' width='15' height='18' rx='2' fill='%2321A366'/%3E%3Crect x='2' y='6' width='11' height='12' rx='1.5' fill='%23107C41'/%3E%3Cpath d='M5 9l5 6M10 9l-5 6' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E";
+function buildExcel(){
+  var cols='ABCDEFGHIJKLMNOPQRST'.split(''), W=[56,92,110,96,96,96,104,104,92,80,80,80,80,80,80,80,80,80,80,80];
+  var depts=['华东大区','华南大区','华北大区','西南大区','华中大区','西北大区','东北大区','海外事业部','电商渠道','直营门店','大客户部','供应链中心','研发中心','市场部','行政部','财务部','人力资源部','法务部','信息技术部','客服中心'];
+  var cats=['差旅费','市场推广','办公耗材','设备采购','外包服务','培训费','招待费','租赁费','软件订阅','物流仓储'];
+  var seed=20261104; function rnd(){seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff}
+  function f(n){return n.toLocaleString('zh-CN')}
+  var h='<table style="width:'+(40+W.reduce(function(a,b){return a+b},0))+'px"><colgroup><col style="width:40px">'+W.map(function(w){return '<col style="width:'+w+'px">'}).join('')+'</colgroup><tr><th class="rh"></th>';
+  cols.forEach(function(c){h+='<th'+(c==='G'?' class="hl"':'')+'>'+c+'</th>'}); h+='</tr>';
+  var sum=[0,0,0,0,0];
+  for(var r=1;r<=48;r++){
+    h+='<tr><th class="rh'+(r===7?' hl':'')+'">'+r+'</th>';
+    for(var ci=0;ci<cols.length;ci++){
+      var cls='',v='';
+      if(r===1&&ci===0){cls='t ov';v='2026 年第四季度 各部门费用预算执行明细表（单位：元）'}
+      else if(r===2&&ci===0){v='编制：财务部　　审核：　　　　更新日期：2026-11-04';cls='ov';}
+      else if(r===4&&ci<10){cls='h';v=['序号','部门','费用类别','10 月','11 月','12 月','季度合计','预算','差异','执行率'][ci]}
+      else if(r>=5&&r<=24&&ci<10){
+        var i=r-5; if(!buildExcel.rows) buildExcel.rows=[]; var row=buildExcel.rows[i];
+        if(!row){var a=Math.round(80000+rnd()*420000),b=Math.round(a*(0.85+rnd()*0.3)),c=Math.round(a*(0.8+rnd()*0.35)),bud=Math.round((a+b+c)*(0.92+rnd()*0.16));row=buildExcel.rows[i]=[a,b,c,bud,cats[Math.floor(rnd()*cats.length)]]}
+        var tot=row[0]+row[1]+row[2], diff=row[3]-tot;
+        if(ci<3){v=[i+1,depts[i],row[4]][ci]; if(ci===0)cls='n'}
+        else if(ci<6){v=f(row[ci-3]);cls='n';sum[ci-3]+=row[ci-3]}
+        else if(ci===6){v=f(tot);cls='n';sum[3]+=tot}
+        else if(ci===7){v=f(row[3]);cls='n';sum[4]+=row[3]}
+        else if(ci===8){v=(diff<0?'-':'')+f(Math.abs(diff));cls='n'+(diff<0?' neg':'')}
+        else {v=(tot/row[3]*100).toFixed(1)+'%';cls='n'}
+        if(i%2===1)cls+=' alt'; if(r===7&&ci===6)cls+=' cur';
+      }
+      else if(r===25&&ci<10){cls='sum'+(ci>=3?' n':''); if(ci===1)v='合计'; else if(ci>=3&&ci<=7)v=f(sum[ci-3]); else if(ci===8){var d=sum[4]-sum[3];v=(d<0?'-':'')+f(Math.abs(d));} else if(ci===9)v=(sum[3]/sum[4]*100).toFixed(1)+'%';}
+      else if(r===27&&ci===0){v='备注：1. 差异 = 预算 - 季度合计；2. 执行率超过 100% 的部门请于月底前提交说明。';cls='ov'}
+      h+='<td class="'+cls+'">'+v+'</td>';
+    }
+    h+='</tr>';
+  }
+  $('xlGrid').innerHTML=h+'</table>';
+}
+function setBoss(on){
+  boss=on; if(on&&!$('xlGrid').firstChild) buildExcel();
+  $('excel').classList.toggle('on',on); document.title=on?'工作簿1 - Excel':normalTitle; $('favicon').href=on?XL_ICON:normalIcon;
+}
+
+/* ---------------- 打气 ---------------- */
+var pepTimer=0, pepBag=[];
+function pep(){
+  if(!pepBag.length){pepBag=PEPS.map(function(_,i){return i});for(var i=pepBag.length-1;i>0;i--){var j=Math.random()*(i+1)|0,t=pepBag[i];pepBag[i]=pepBag[j];pepBag[j]=t}}
+  var k=pepBag.pop(), el=$('pep'); $('pepQ').textContent=PEPS[k]; $('pepBy').textContent='—— 上班鼓励器 · 第 '+(k+1)+' / '+PEPS.length+' 句';
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  var b=$('btnPep').getBoundingClientRect(); burst(b.left+b.width/2,b.top+4,36,170,['#3FE0C5','#8CF5E2','#EFE9DC','#D9B26A']);
+  if(canPlay()){var t=actx.currentTime;tone(660,t,0.12,'triangle',0.1);tone(990,t+0.08,0.22,'triangle',0.1);}
+  clearTimeout(pepTimer); pepTimer=setTimeout(function(){el.classList.remove('on')},5200);
+}
+
+/* ---------------- 下班 ---------------- */
+var celebrated=false, owTimer=0;
+function celebrate(){
+  var ow=$('ow'); ow.classList.add('on'); $('cd').classList.remove('on');
+  $('owSub').textContent=pickOff();
+  ow.querySelector('.big').animate([{transform:'scale(.4) rotate(-6deg)',opacity:0},{transform:'scale(1.12) rotate(1deg)',opacity:1,offset:.6},{transform:'scale(1) rotate(0)',opacity:1}],{duration:700,easing:'cubic-bezier(.2,1.2,.4,1)'});
+  showUntil=performance.now()+6500; nextRocket=0; for(var i=0;i<4;i++) setTimeout(rocket,i*120); startFx(); fanfare();
+  clearTimeout(owTimer); owTimer=setTimeout(function(){ow.classList.remove('on')},9000);
+}
+var OFF=['今天辛苦了，剩下的时间都归你自己','电脑可以关了，工牌可以摘了，人可以活了','今日份的工资已到账（精神上）','跑！趁电梯还没满！'];
+function pickOff(){return OFF[Math.random()*OFF.length|0]}
+
+/* ---------------- 主循环 ---------------- */
+var lastFloor=null, lastDay='', prevT=null, timerOff=false, frozen=null, lastCd=-1, lastFrameMs=null;
+function frame(){
+  var ms=nowMs(), d=new Date(ms), st=stateAt(M,d), dk=dayKey(d);
+  var dtv = lastFrameMs==null?0:Math.max(0,(ms-lastFrameMs)/1000); lastFrameMs=ms;
+  if(dk!==lastDay){ lastDay=dk; lastFloor=null; prevT=null; celebrated=false; }
+
+  $('clock').textContent=dk+' '+WEEK[d.getDay()]+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  var badge=$('demoBadge'); badge.classList.toggle('on',clock.demo&&!clean); if(clock.demo) badge.textContent='录屏模式 ×'+clock.speed;
+  $('demobar').classList.toggle('on',clock.demo&&!clean&&demoBarOn);
+
+  // 状态
+  var stEl=$('status'), txt, sub;
+  if(st.kind==='weekend'){txt='周末休息';sub='今天不赚老板的钱，只花自己的钱'}
+  else if(st.kind==='before'){txt='还没上班';sub='距离上班还有 <em class="num">'+fmtDur(Math.ceil(M.start-st.t))+'</em>，再睡五分钟？'}
+  else if(st.kind==='lunch'){txt='午休中';sub='午休不计薪，距离开工还有 <em class="num">'+fmtDur(Math.ceil(M.le-st.t))+'</em>'}
+  else if(st.kind==='work'){txt='上班中';sub='距离下班还有 <em class="num">'+fmtDur(Math.ceil(st.toEnd))+'</em>'}
+  else {txt='白干中';sub='已经过了下班点 <em class="num">'+fmtDur(st.t-M.end)+'</em>'}
+  stEl.className='status st-'+({weekend:'weekend',before:'idle',lunch:'lunch',work:'work',over:'over'})[st.kind];
+  if($('stText').textContent!==txt)$('stText').textContent=txt;
+  if($('stSub').innerHTML!==sub)$('stSub').innerHTML=sub;
+
+  // 金额
+  var amtEl=$('amount'); amtEl.classList.toggle('grey',st.kind==='over'); amtEl.classList.toggle('frozen',timerOff);
+  var shown = timerOff ? frozen : st;
+  renderAmount(shown.earned);
+  var sp;
+  if(st.kind==='over') sp='<span class="ot">白干中，已为老板免费贡献 <b class="num">'+money(st.overtime,4)+'</b></span>';
+  else if(timerOff) sp='计时器已关闭（钱照样在赚，只是你看不见）';
+  else sp='当前赚钱速度 <b class="num">'+money(st.rate,4)+'</b> / 秒';
+  var spEl=$('speed'); if(spEl.innerHTML!==sp) spEl.innerHTML=sp;
+  $('amountLabel').textContent = st.kind==='over'?'今日已赚（已封顶）':st.kind==='weekend'?'今日已赚（周末不计）':'今日已赚';
+
+  // 金币 & 关口
+  var fl=Math.floor(st.earned+1e-9);
+  if(lastFloor!==null && fl>lastFloor && !timerOff && !boss){
+    var n=Math.min(fl-lastFloor,4); for(var i=0;i<n;i++) dropCoin(i*120);
+    for(var k=0;k<MILESTONES.length;k++){ if(lastFloor<MILESTONES[k]&&fl>=MILESTONES[k]){ milestone(MILESTONES[k]); break; } }
+  }
+  lastFloor=fl;
+
+  // 换算轮播
+  var tnow=performance.now();
+  if(tnow>tickAt){ if(tickAt){ tickIdx=(tickIdx+1)%ITEMS.length; tickTxt.animate([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'none'}],{duration:420,easing:'cubic-bezier(.2,.8,.2,1)'}); } tickAt=tnow+4200; }
+  var tt=tickerText(shown); if(tt!==lastTick){tickTxt.innerHTML=tt;lastTick=tt}
+
+  // 大屏倒计时卡片
+  var ck,cv2,cs;
+  function hmsBig(x,up){x=Math.max(0,up?Math.ceil(x):Math.floor(x));return pad(Math.floor(x/3600))+'<small>时</small>'+pad(Math.floor(x%3600/60))+'<small>分</small>'+pad(x%60)+'<small>秒</small>'}
+  if(st.kind==='work'){ck='距离下班';cv2=hmsBig(st.toEnd,1);cs='按现在的速度，下班前还能再赚 '+money((M.workSec-st.worked)*M.perSec,2);}
+  else if(st.kind==='lunch'){ck='午休剩余';cv2=hmsBig(M.le-st.t,1);cs='这段时间不计薪，好好吃饭';}
+  else if(st.kind==='before'){ck='距离上班';cv2=hmsBig(M.start-st.t,1);cs='现在的每一秒都是免费的';}
+  else if(st.kind==='over'){ck='已白干';cv2=hmsBig(st.t-M.end);cs='相当于送了老板 '+money(st.overtime,2);}
+  else {ck='周末';cv2='休息<small>中</small>';cs='闹钟也在放假';}
+  if($('cdK').textContent!==ck)$('cdK').textContent=ck; if($('cdV').innerHTML!==cv2)$('cdV').innerHTML=cv2; if($('cdS').textContent!==cs)$('cdS').textContent=cs;
+
+  // 进度 & 统计
+  var pct=clamp(st.progress,0,1)*100;
+  $('pPct').textContent=pct.toFixed(1)+'%'; $('pBar').style.width=pct+'%';
+  $('pHrs').textContent='已工作 '+(st.worked/3600).toFixed(2)+' / '+(M.workSec/3600).toFixed(2)+' 小时';
+  $('sMonth').textContent=money(st.month,2); $('sHour').textContent=money(M.hourly,2); $('sDay').textContent=money(M.daily,2);
+
+  // 带薪如厕
+  if(toiOn){
+    toiSessSec+=dtv;
+    if(st.kind==='work'){ var inc=M.perSec*dtv; toiSess+=inc; if(clock.demo) demoToilet+=inc; else toiTotal+=inc; }
+    if(!clock.demo && tnow>toiSaveAt){ lsSet(LS_TOI,toiTotal); toiSaveAt=tnow+1000; }
+    $('toiSess').textContent= st.kind==='work' ? '本次已蹲 '+fmtDur(toiSessSec)+'，老板为你支付 '+money(toiSess,4) : '本次已蹲 '+fmtDur(toiSessSec)+'，现在不计薪，这趟是自费的';
+  }
+  $('toiAmt').textContent=money(clock.demo?demoToilet:toiTotal,4)+(clock.demo?'（录屏）':'');
+
+  // 最后 10 秒倒数 & 下班
+  var cd=$('cd');
+  if(st.kind==='work' && st.toEnd<=10 && st.toEnd>0){
+    var c=Math.ceil(st.toEnd); cd.classList.add('on');
+    if(c!==lastCd){ lastCd=c; var nEl=$('cdN'); nEl.textContent=c; nEl.classList.toggle('hot',c<=3);
+      nEl.animate([{transform:'scale(1.35)',opacity:.2},{transform:'scale(1)',opacity:1}],{duration:380,easing:'cubic-bezier(.2,1.3,.4,1)'}); tick(c<=3); }
+  } else { if(cd.classList.contains('on')) cd.classList.remove('on'); lastCd=-1; }
+  if(prevT!==null && st.workday && prevT<M.end && st.t>=M.end && (st.t-prevT)<600 && !celebrated){ celebrated=true; celebrate(); }
+  prevT=st.t;
+
+  requestAnimationFrame(frame);
+}
+
+/* ---------------- 设置面板 ---------------- */
+function openSet(){ $('fSalary').value=S.salary;$('fDays').value=S.days;$('fStart').value=S.start;$('fEnd').value=S.end;$('fLs').value=S.ls;$('fLe').value=S.le;$('fErr').textContent='';
+  $('mask').classList.add('on');$('drawer').classList.add('on'); }
+function closeSet(){ $('mask').classList.remove('on');$('drawer').classList.remove('on'); }
+function readForm(){ return {salary:+$('fSalary').value, days:Math.round(+$('fDays').value), start:$('fStart').value||DEFAULTS.start, end:$('fEnd').value||DEFAULTS.end, ls:$('fLs').value||'00:00', le:$('fLe').value||'00:00'}; }
+function applySettings(n){ S=n; M=model(S); lastFloor=null; lsSet(LS_SET,S); }
+$('btnSave').onclick=function(){ var n=readForm(), e=validate(n); if(e){$('fErr').textContent=e;return} applySettings(n); closeSet(); };
+$('btnReset').onclick=function(){ applySettings(Object.assign({},DEFAULTS)); openSet(); };
+$('btnClose').onclick=closeSet; $('mask').onclick=closeSet; $('btnSet').onclick=openSet;
+$('btnToiReset').onclick=function(){ toiTotal=0; demoToilet=0; lsSet(LS_TOI,0); };
+Array.prototype.forEach.call(document.querySelectorAll('[data-speed]'),function(b){b.onclick=function(){setSpeed(+b.dataset.speed)}});
+Array.prototype.forEach.call(document.querySelectorAll('[data-jump]'),function(b){b.onclick=function(){jump(b.dataset.jump);}});
+
+/* ---------------- 按钮 & 快捷键 ---------------- */
+$('btnPep').onclick=pep;
+$('btnToilet').onclick=toggleToilet;
+$('btnBoss').onclick=function(){setBoss(!boss)};
+$('excel').addEventListener('dblclick',function(){setBoss(false)});
+$('btnTimer').onclick=function(){ timerOff=!timerOff; frozen=stateAt(M,new Date(nowMs())); $('timerLbl').textContent=timerOff?'打开计时器':'关闭计时器'; };
+$('btnSound').onclick=function(){ soundOn=!soundOn; lsSet(LS_SOUND,soundOn); renderSoundBtn(); if(soundOn){unlockAudio();setTimeout(ding,60)} };
+$('ow').onclick=function(){ $('ow').classList.remove('on'); showUntil=0; };
+var demoBarOn=true;
+document.addEventListener('pointerdown',unlockAudio,true);
+document.addEventListener('keydown',function(e){
+  unlockAudio();
+  var tag=(e.target&&e.target.tagName)||''; var typing=tag==='INPUT'||tag==='TEXTAREA';
+  if(e.key==='Escape'){ e.preventDefault(); setBoss(!boss); return; }
+  if(typing||e.ctrlKey||e.metaKey||e.altKey) return;
+  var k=e.key.toLowerCase();
+  if(k==='b') setBoss(!boss);
+  else if(boss) return;
+  else if(k==='j') pep();
+  else if(k==='t') toggleToilet();
+  else if(k==='m') $('btnSound').onclick();
+  else if(k==='d'){ if(!clock.demo){enterDemo();demoBarOn=true} else demoBarOn=!demoBarOn; }
+});
+addEventListener('resize',sizeFx);
+
+/* ---------------- URL 参数 ---------------- */
+var clean=false;
+function applyHash(){
+  var q=(location.hash||'').replace(/^#/,'')+'&'+(location.search||'').replace(/^\?/,''), P={};
+  q.split('&').forEach(function(kv){ if(!kv)return; var i=kv.indexOf('='); var k=decodeURIComponent(i<0?kv:kv.slice(0,i)), v=i<0?'1':decodeURIComponent(kv.slice(i+1)); P[k.toLowerCase()]=v; });
+  clean = P.clean==='1';
+  if(P.mute==='1'){ soundOn=false; renderSoundBtn(); }
+  if(P.demo){ var dm=P.demo.toLowerCase(); jump(['offwork','100','overtime','lunch','morning'].indexOf(dm)>=0?dm:'now', +P.before||0); }
+  if(P.speed){ var sp=clamp(+P.speed||1,0.1,36000); setSpeed(sp); }
+  if(P.boss==='1') setBoss(true);
+  if(P.pep==='1') setTimeout(pep,300);
+}
+addEventListener('hashchange',applyHash);
+
+/* ---------------- 对外（测试 / 录屏脚本用） ---------------- */
+window.SBG={DEFAULTS:DEFAULTS,ITEMS:ITEMS,PEPS:PEPS,model:model,stateAt:stateAt,workedAt:workedAt,
+  get settings(){return S},get M(){return M},get boss(){return boss},get demo(){return clock.demo},
+  setBoss:setBoss,pep:pep,jump:jump,setSpeed:setSpeed,celebrate:celebrate,toggleToilet:toggleToilet,now:nowMs,
+  setTime:function(ms){enterDemo();setVirtual(ms);resyncFx()}};
+
+sizeFx(); renderSoundBtn(); applyHash(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
