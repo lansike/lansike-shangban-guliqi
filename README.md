@@ -58,17 +58,17 @@
 
 ## Agent 怎么调
 
-纯前端页面，没有接口、不接任何服务。Agent 想演示或录屏，带上网址参数打开即可。Windows 下推荐这两种写法：
+纯前端页面，没有接口、不接任何服务。Agent 想演示或录屏，带上网址参数打开即可。Windows 下用 `start-mini.bat` 带参数打开（文件夹名有中文或空格也行）：
 
 ```bat
 :: 用小窗打开并直接跳到下班前 15 秒
 start-mini.bat "demo=offwork"
 
-:: 用 Edge / Chrome 打开完整页面（%cd% 为本项目文件夹）
-start "" msedge "file:///%cd:\=/%/index.html#demo=100&speed=60"
+:: 多个参数用 & 连接，整段加引号
+start-mini.bat "demo=100&speed=60"
 ```
 
-`start "" "index.html#demo=offwork"` 这种把参数直接拼在文件名后面的写法，Windows 会把整段当成文件名，可能打不开；请用上面两种。
+`start "" "index.html#demo=offwork"` 这种把参数直接拼在文件名后面的写法，Windows 会把整段当成文件名，打不开；请用上面的写法。
 
 支持的参数（写在 `#` 后面，多个用 `&` 连接）：
 
