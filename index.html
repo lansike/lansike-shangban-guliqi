@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" translate="no">
 <head>
 <meta charset="utf-8">
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>上班鼓励器</title>
 <link id="favicon" rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%23D9B26A'/%3E%3Ccircle cx='32' cy='32' r='21' fill='none' stroke='%2313161B' stroke-width='3' opacity='.35'/%3E%3Ctext x='32' y='43' font-size='30' text-anchor='middle' font-family='Arial' font-weight='700' fill='%2313161B'%3E%C2%A5%3C/text%3E%3C/svg%3E">
@@ -127,8 +128,6 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
 .cdcard .s{font-size:13px;color:var(--faint);margin-top:8px}
 @media (min-width:1600px) and (min-height:900px){.app{zoom:1.28}}
 .foot{font-size:10.5px;color:var(--faint);text-align:center;padding:2px 0 0}
-.hint{position:fixed;left:50%;bottom:8px;transform:translateX(-50%);font-size:11.5px;color:var(--bg);background:var(--gold);padding:4px 11px;border-radius:99px;z-index:40;opacity:0;pointer-events:none;transition:opacity .4s}
-.hint.on{opacity:.92}
 
 /* big layout */
 @media (min-width:880px) and (min-height:540px){
@@ -336,11 +335,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
 
 <div id="coins"></div>
 <canvas id="fx"></canvas>
-<div class="hint" id="hint">点一下页面，开启叮当声</div>
 <div class="pep" id="pep"><div class="q" id="pepQ"></div><div class="by" id="pepBy">—— 上班鼓励器 · 第 1 句</div></div>
 <div class="ms" id="ms"></div>
 <div class="cd" id="cd"><div class="t">距 离 下 班</div><div class="n" id="cdN">10</div></div>
-<div class="ow" id="ow"><div class="big">下班！</div><div class="sub" id="owSub">今天辛苦了，剩下的时间都归你自己</div><div class="tip">点任意处关闭</div></div>
+<div class="ow" id="ow"><div class="big">下班！</div><div class="sub" id="owSub">跑！趁电梯还没被隔壁部门塞满</div><div class="tip">点任意处关闭</div></div>
 
 <div class="demobar" id="demobar">
   <span class="t">录屏模式</span>
@@ -576,7 +574,6 @@ function unlockAudio(){
     if(!actx){var C=window.AudioContext||window.webkitAudioContext;if(!C)return;actx=new C();}
     if(actx.state==='suspended') actx.resume();
   }catch(e){}
-  setTimeout(updateHint,50);
 }
 function canPlay(){return soundOn && !boss && actx && actx.state==='running'}
 function tone(f,t0,dur,type,g,f2){
@@ -598,7 +595,7 @@ function pop(big){ if(!canPlay())return; var t=actx.currentTime, len=big?0.6:0.3
 function tick(hot){ if(!canPlay())return; var t=actx.currentTime; tone(hot?1320:880,t,0.12,'square',0.05); }
 function fanfare(){ if(!canPlay())return; var t=actx.currentTime,n=[523.25,659.25,783.99,1046.5,1318.5];
   n.forEach(function(f,i){tone(f,t+i*0.11,0.5,'triangle',0.14)}); tone(1046.5,t+0.6,1.2,'triangle',0.12); tone(1568,t+0.6,1.2,'sine',0.05); }
-function updateHint(){ $('hint').classList.toggle('on', !!(soundOn && (!actx || actx.state!=='running'))); }
+function updateHint(){} // 不再显示提示条：第一次点任意按钮/任意位置/按键时顺便解锁 AudioContext
 function renderSoundBtn(){ var b=$('btnSound');b.classList.toggle('off',!soundOn);
   b.querySelector('.w1').style.display=b.querySelector('.w2').style.display=soundOn?'':'none';b.querySelector('.x').style.display=soundOn?'none':''; updateHint(); }
 
@@ -753,7 +750,18 @@ function celebrate(){
   showUntil=performance.now()+6500; nextRocket=0; for(var i=0;i<4;i++) setTimeout(rocket,i*120); startFx(); fanfare();
   clearTimeout(owTimer); owTimer=setTimeout(function(){ow.classList.remove('on')},9000);
 }
-var OFF=['今天辛苦了，剩下的时间都归你自己','电脑可以关了，工牌可以摘了，人可以活了','今日份的工资已到账（精神上）','跑！趁电梯还没满！'];
+var OFF=[
+  '跑！趁电梯还没被隔壁部门塞满',
+  '工牌摘了，你现在只是一个普通的饿鬼',
+  '老板的保时捷今天又多了一颗螺丝，你可以走了',
+  '未读消息请交给明天的你处理，他比较能扛',
+  '把椅子推回去，它也想下班',
+  '别回头，身后那句「有个小事」不是在叫你',
+  '今日份的头发已上交公司，余下的请带回家保管',
+  '地铁上能不能有座，全看你接下来跑多快',
+  '从现在起，你说的每一句「收到」都不计薪了，省着点说',
+  '楼下煎饼摊阿姨已经把蛋打好了，就等你一句「加根肠」'
+];
 function pickOff(){return OFF[Math.random()*OFF.length|0]}
 
 /* ---------------- 主循环 ---------------- */
@@ -863,6 +871,8 @@ $('btnSound').onclick=function(){ soundOn=!soundOn; lsSet(LS_SOUND,soundOn); ren
 $('ow').onclick=function(){ $('ow').classList.remove('on'); showUntil=0; };
 var demoBarOn=true;
 document.addEventListener('pointerdown',unlockAudio,true);
+document.addEventListener('click',unlockAudio,true);
+document.addEventListener('touchstart',unlockAudio,{capture:true,passive:true});
 document.addEventListener('keydown',function(e){
   unlockAudio();
   var tag=(e.target&&e.target.tagName)||''; var typing=tag==='INPUT'||tag==='TEXTAREA';
