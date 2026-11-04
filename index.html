@@ -238,6 +238,16 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
 /* fake excel (boss key) */
 #excel{position:fixed;inset:0;z-index:100;background:#fff;color:#222;display:none;flex-direction:column;font-family:'Microsoft YaHei','DengXian','Segoe UI',Arial,sans-serif;font-size:12px;user-select:none}
 #excel.on{display:flex}
+#excel .xl-fake{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+#excel .xl-custom{display:none;position:absolute;inset:0;background:#111;align-items:center;justify-content:center}
+#excel.custom .xl-fake{display:none}
+#excel.custom .xl-custom{display:flex}
+#excel .xl-custom img{width:100%;height:100%;object-fit:contain;pointer-events:none}
+.boss-prev{margin-top:10px;width:100%;height:120px;border-radius:10px;border:1px dashed var(--line);background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--faint);font-size:12px}
+.boss-prev.has span{display:none}
+.boss-prev img{display:none;max-width:100%;max-height:100%;object-fit:contain}
+.boss-prev.has img{display:block}
+.drawer label.chip{display:inline-flex;align-items:center;cursor:pointer}
 .xl-title{height:32px;background:#107C41;color:#fff;display:flex;align-items:center;padding:0 0 0 10px;gap:10px;flex:none}
 .xl-title .lg{width:20px;height:20px}
 .xl-title .qa{display:flex;gap:12px;opacity:.9}
@@ -364,6 +374,15 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
       <button class="chip" data-jump="offwork">下班前15秒</button><button class="chip" data-jump="100">快满¥100</button>
       <button class="chip" data-jump="overtime">加班中</button><button class="chip" data-jump="lunch">午休中</button><button class="chip" data-jump="exit">回到现实</button>
     </div>
+    <div class="sec">老板键伪装图</div>
+    <div class="note">建议截一张自己的真表格全屏图（png / jpg / webp / gif）。只存在本机浏览器（IndexedDB），不上传服务器。没上传时老板键仍显示默认假 Excel。</div>
+    <div class="boss-prev" id="bossPrev"><span id="bossPrevEmpty">未上传</span><img id="bossPrevImg" alt=""></div>
+    <div class="chips" style="margin-top:10px">
+      <label class="chip" for="bossFile">选择图片</label>
+      <input id="bossFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif" hidden>
+      <button class="chip" type="button" id="btnBossClear">清除</button>
+    </div>
+    <div class="note" id="bossImgMeta"></div>
     <div class="sec">带薪如厕</div>
     <div class="chips"><button class="chip" id="btnToiReset">清零带薪如厕累计</button></div>
   </div>
@@ -371,6 +390,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
 </aside>
 
 <div id="excel" aria-hidden="true">
+  <div class="xl-fake" id="xlFake">
   <div class="xl-title">
     <svg class="lg" viewBox="0 0 24 24"><rect x="7" y="3" width="15" height="18" rx="2" fill="#fff" opacity=".9"/><path d="M14 7h6M14 11h6M14 15h6" stroke="#107C41" stroke-width="1.6"/><rect x="2" y="6" width="11" height="12" rx="1.5" fill="#0B5E31"/><path d="M5 9l5 6M10 9l-5 6" stroke="#fff" stroke-width="1.8"/></svg>
     <div class="qa"><span>自动保存 ● 关</span><span>保存</span><span>撤销</span><span>恢复</span></div>
@@ -392,6 +412,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-o
   <div class="xl-grid" id="xlGrid"></div>
   <div class="xl-sheets"><span>&lt; &gt;</span><span class="on">Q4预算</span><span>Sheet2</span><span>汇总</span><span>＋</span></div>
   <div class="xl-status"><span>就绪</span><span>辅助功能: 一切就绪</span><div class="r"><span>平均值: 486,217</span><span>计数: 3</span><span>求和: 1,458,651</span><span>普通　页面布局</span><span>100%</span></div></div>
+  </div>
+  <div class="xl-custom" id="xlCustom" aria-hidden="true"><img id="xlCustomImg" alt="老板键伪装图"></div>
 </div>
 
 <script>
@@ -689,6 +711,90 @@ function toggleToilet(){ toiOn=!toiOn; toiSess=0; toiSessSec=0; $('btnToilet').c
 /* ---------------- 老板键 ---------------- */
 var boss=false, normalTitle=document.title, normalIcon=$('favicon').href;
 var XL_ICON="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='7' y='3' width='15' height='18' rx='2' fill='%2321A366'/%3E%3Crect x='2' y='6' width='11' height='12' rx='1.5' fill='%23107C41'/%3E%3Cpath d='M5 9l5 6M10 9l-5 6' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E";
+var bossBlobUrl=null, bossMeta=null;
+var BOSS_OK={'image/png':1,'image/jpeg':1,'image/webp':1,'image/gif':1};
+function idbOpen(){
+  return new Promise(function(resolve,reject){
+    var req=indexedDB.open('lsk-shangban',1);
+    req.onupgradeneeded=function(){ var db=req.result; if(!db.objectStoreNames.contains('boss')) db.createObjectStore('boss'); };
+    req.onsuccess=function(){ resolve(req.result); };
+    req.onerror=function(){ reject(req.error); };
+  });
+}
+function idbGetSheet(){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction('boss','readonly');
+      var r=tx.objectStore('boss').get('sheetImage');
+      r.onsuccess=function(){ resolve(r.result||null); };
+      r.onerror=function(){ reject(r.error); };
+    });
+  });
+}
+function idbPutSheet(rec){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction('boss','readwrite');
+      tx.objectStore('boss').put(rec,'sheetImage');
+      tx.oncomplete=function(){ resolve(); };
+      tx.onerror=function(){ reject(tx.error); };
+    });
+  });
+}
+function idbDelSheet(){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction('boss','readwrite');
+      tx.objectStore('boss').delete('sheetImage');
+      tx.oncomplete=function(){ resolve(); };
+      tx.onerror=function(){ reject(tx.error); };
+    });
+  });
+}
+function revokeBossUrl(){ if(bossBlobUrl){ try{URL.revokeObjectURL(bossBlobUrl)}catch(e){} bossBlobUrl=null; } }
+function updateBossPreview(){
+  var prev=$('bossPrev'), img=$('bossPrevImg'), meta=$('bossImgMeta');
+  if(bossBlobUrl){
+    prev.classList.add('has'); img.src=bossBlobUrl;
+    var bits=[]; if(bossMeta&&bossMeta.name) bits.push(bossMeta.name); if(bossMeta&&bossMeta.ts) bits.push(new Date(bossMeta.ts).toLocaleString());
+    meta.textContent=bits.length?('已保存：'+bits.join(' · ')):'已保存自定义伪装图';
+  } else {
+    prev.classList.remove('has'); img.removeAttribute('src'); meta.textContent='';
+  }
+}
+function applyBossView(){
+  var el=$('excel'), has=!!bossBlobUrl;
+  el.classList.toggle('custom', has);
+  if(has){ $('xlCustomImg').src=bossBlobUrl; $('xlCustom').setAttribute('aria-hidden','false'); }
+  else { $('xlCustom').setAttribute('aria-hidden','true'); $('xlCustomImg').removeAttribute('src'); }
+}
+function clearBossImage(persist){
+  revokeBossUrl(); bossMeta=null; applyBossView(); updateBossPreview();
+  if(persist) return idbDelSheet().catch(function(){});
+  return Promise.resolve();
+}
+function setBossImageFromFile(file){
+  if(!file) return Promise.resolve();
+  var mime=(file.type||'').toLowerCase();
+  if(!BOSS_OK[mime]){ alert('请选择 png / jpg / webp / gif 图片'); return Promise.resolve(); }
+  return idbPutSheet({blob:file, mime:mime, name:file.name||'sheet', ts:Date.now()}).then(function(){
+    revokeBossUrl();
+    bossBlobUrl=URL.createObjectURL(file);
+    bossMeta={mime:mime, name:file.name||'sheet', ts:Date.now()};
+    updateBossPreview();
+    if(boss) applyBossView();
+  }).catch(function(err){ alert('保存失败：'+(err&&err.message?err.message:'IndexedDB')); });
+}
+function loadBossImage(){
+  return idbGetSheet().then(function(rec){
+    if(!rec||!rec.blob){ updateBossPreview(); return; }
+    revokeBossUrl();
+    bossBlobUrl=URL.createObjectURL(rec.blob);
+    bossMeta={mime:rec.mime||rec.blob.type||'', name:rec.name||'', ts:rec.ts||0};
+    updateBossPreview();
+    if(boss) applyBossView();
+  }).catch(function(){ updateBossPreview(); });
+}
 function buildExcel(){
   var cols='ABCDEFGHIJKLMNOPQRST'.split(''), W=[56,92,110,96,96,96,104,104,92,80,80,80,80,80,80,80,80,80,80,80];
   var depts=['华东大区','华南大区','华北大区','西南大区','华中大区','西北大区','东北大区','海外事业部','电商渠道','直营门店','大客户部','供应链中心','研发中心','市场部','行政部','财务部','人力资源部','法务部','信息技术部','客服中心'];
@@ -726,8 +832,15 @@ function buildExcel(){
   $('xlGrid').innerHTML=h+'</table>';
 }
 function setBoss(on){
-  boss=on; if(on&&!$('xlGrid').firstChild) buildExcel();
-  $('excel').classList.toggle('on',on); document.title=on?'工作簿1 - Excel':normalTitle; $('favicon').href=on?XL_ICON:normalIcon;
+  boss=!!on;
+  if(boss){
+    if(bossBlobUrl) applyBossView();
+    else { $('excel').classList.remove('custom'); if(!$('xlGrid').firstChild) buildExcel(); }
+  }
+  $('excel').classList.toggle('on',boss);
+  $('excel').setAttribute('aria-hidden', boss?'false':'true');
+  document.title=boss?'工作簿1 - Excel':normalTitle;
+  $('favicon').href=boss?XL_ICON:normalIcon;
 }
 
 /* ---------------- 打气 ---------------- */
@@ -849,7 +962,7 @@ function frame(){
 }
 
 /* ---------------- 设置面板 ---------------- */
-function openSet(){ $('fSalary').value=S.salary;$('fDays').value=S.days;$('fStart').value=S.start;$('fEnd').value=S.end;$('fLs').value=S.ls;$('fLe').value=S.le;$('fErr').textContent='';
+function openSet(){ $('fSalary').value=S.salary;$('fDays').value=S.days;$('fStart').value=S.start;$('fEnd').value=S.end;$('fLs').value=S.ls;$('fLe').value=S.le;$('fErr').textContent=''; updateBossPreview();
   $('mask').classList.add('on');$('drawer').classList.add('on'); }
 function closeSet(){ $('mask').classList.remove('on');$('drawer').classList.remove('on'); }
 function readForm(){ return {salary:+$('fSalary').value, days:Math.round(+$('fDays').value), start:$('fStart').value||DEFAULTS.start, end:$('fEnd').value||DEFAULTS.end, ls:$('fLs').value||'00:00', le:$('fLe').value||'00:00'}; }
@@ -858,6 +971,8 @@ $('btnSave').onclick=function(){ var n=readForm(), e=validate(n); if(e){$('fErr'
 $('btnReset').onclick=function(){ applySettings(Object.assign({},DEFAULTS)); openSet(); };
 $('btnClose').onclick=closeSet; $('mask').onclick=closeSet; $('btnSet').onclick=openSet;
 $('btnToiReset').onclick=function(){ toiTotal=0; demoToilet=0; lsSet(LS_TOI,0); };
+$('bossFile').onchange=function(){ var f=this.files&&this.files[0]; this.value=''; if(f) setBossImageFromFile(f); };
+$('btnBossClear').onclick=function(){ clearBossImage(true); };
 Array.prototype.forEach.call(document.querySelectorAll('[data-speed]'),function(b){b.onclick=function(){setSpeed(+b.dataset.speed)}});
 Array.prototype.forEach.call(document.querySelectorAll('[data-jump]'),function(b){b.onclick=function(){jump(b.dataset.jump);}});
 
@@ -879,7 +994,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){ e.preventDefault(); setBoss(!boss); return; }
   if(typing||e.ctrlKey||e.metaKey||e.altKey) return;
   var k=e.key.toLowerCase();
-  if(k==='b') setBoss(!boss);
+  if(k==='b'||k==='\\'||k==='`') setBoss(!boss);
   else if(boss) return;
   else if(k==='j') pep();
   else if(k==='t') toggleToilet();
@@ -905,10 +1020,13 @@ addEventListener('hashchange',applyHash);
 /* ---------------- 对外（测试 / 录屏脚本用） ---------------- */
 window.SBG={DEFAULTS:DEFAULTS,ITEMS:ITEMS,PEPS:PEPS,model:model,stateAt:stateAt,workedAt:workedAt,
   get settings(){return S},get M(){return M},get boss(){return boss},get demo(){return clock.demo},
+  get hasBossImage(){return !!bossBlobUrl},
   setBoss:setBoss,pep:pep,jump:jump,setSpeed:setSpeed,celebrate:celebrate,toggleToilet:toggleToilet,now:nowMs,
+  setBossImageFromFile:setBossImageFromFile,clearBossImage:function(){return clearBossImage(true)},
   setTime:function(ms){enterDemo();setVirtual(ms);resyncFx()}};
 
-sizeFx(); renderSoundBtn(); applyHash(); requestAnimationFrame(frame);
+sizeFx(); renderSoundBtn();
+loadBossImage().then(function(){ applyHash(); requestAnimationFrame(frame); }).catch(function(){ applyHash(); requestAnimationFrame(frame); });
 })();
 </script>
 </body>
